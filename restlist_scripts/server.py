@@ -75,4 +75,11 @@ def element_count():
     element = request.get_json()['element']
     return make_response(f"{LIST.count(element)}", 200)
 
-app.run(debug=True)
+
+def main():
+    '''Entry point'''
+    global app
+    app.run(debug=True)
+
+if __name__ == '__main__':
+    main()

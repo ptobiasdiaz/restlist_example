@@ -134,21 +134,33 @@ class RestListClient:
         return self.len()
 
 
-if __name__ == '__main__':
+def main():
+    '''Entry point'''
     client = RestListClient('http://127.0.0.1:5000/')
     client.wipe()
     ELEMENTO = 'pepe'
+    print('Insertamos "juan"')
     client.append('juan')
+    print(f'Insertamos "{ELEMENTO}" 3 veces')
     client.append(ELEMENTO)
     client.append(ELEMENTO)
     client.append(ELEMENTO)
-    print(client.count(ELEMENTO))
-    print(len(client))
+    print(f'Elementos "{ELEMENTO}": ', client.count(ELEMENTO))
+    print('Longitud de la lista: ', len(client))
+    print(f'Eliminamos un elemento "{ELEMENTO}"')
     client.remove(ELEMENTO)
-    print(client.count(ELEMENTO))
-    print(len(client))
+    print(f'Elementos "{ELEMENTO}": ', client.count(ELEMENTO))
+    print('Longitud de la lista: ', len(client))
+    print(f'Eliminamos todos los elementos "{ELEMENTO}"')
     client.remove(ELEMENTO, all_occurrences=True)
-    print(client.count(ELEMENTO))
-    print(len(client))
-    print(client[0])
-    print(client[1])
+    print(f'Elementos "{ELEMENTO}": ', client.count(ELEMENTO))
+    print('Longitud de la lista: ', len(client))
+    print(f'Elemento 0 de la lista: {client[0]}')
+    try:
+        print(f'Elemento 1 de la lista: {client[1]}')
+    except IndexError:
+        print('No se puede acceder al elemento 1 de la lista')
+
+
+if __name__ == '__main__':
+    main()
