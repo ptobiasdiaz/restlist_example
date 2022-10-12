@@ -15,6 +15,7 @@ pip install -r requeriments.txt
 
 Podemos lanzar la *test suite* utilizando *Tox*:
 ```shell
+pip install tox
 tox
 ```
 
