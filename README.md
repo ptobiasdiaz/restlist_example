@@ -21,10 +21,10 @@ tox
 
 Se puede lanzar en un terminal el servidor:
 ```shell
-./restlist_server
+python3 -m restlist_scripts.server
 ```
 
 Y en otro el cliente (que ejecuta código de prueba):
 ```shell
-./restlist_client
+python3 -m restlist_scripts.client
 ```
