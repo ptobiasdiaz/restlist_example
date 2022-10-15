@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 '''
-    Implementacion del servicio RESTLIST
+    Implementacion del servicio de directorios DIRESTORY
 '''
 
-class List:
-    '''Implementa todas las operaciones sobre un objeto tipo List()'''
+class Dir_BD:
+    '''Implementa todas las operaciones sobre un objeto tipo Dir_BD()'''
 
     def __init__(self):
         self.storage = []
