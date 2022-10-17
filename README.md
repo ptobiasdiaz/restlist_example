@@ -30,6 +30,7 @@ python3 -m restlist_scripts.client
 ```
 También se puede ejecutar añadiendo el directorio ".venv/bin" al PATH del sistema y ejecutando:
 ```shell
+export PATH=$(cwd)/.venv/bin:$PATH
 restlist_server
 restlist_client
 ```
