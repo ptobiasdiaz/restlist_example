@@ -131,6 +131,41 @@ class Dir_BD:
         return childs_tuple
 
 
+    def _obtain_writeableBy(self, id):
+        '''Comprueba si el user esta en writeable_by'''
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+    
+        sql_data = (id,)
+        sql_sentence = ("SELECT writeable_by FROM directories WHERE uuid=?")
+        
+        cur.execute(sql_sentence, sql_data)
+        writeable_by_tup = cur.fetchone()[0]
+        
+        writeable_by = json.loads(writeable_by_tup)
+        
+        self.bd_con.close()
+        
+        return writeable_by
+
+
+    def _obtain_readableBy(self, id):
+        '''Comprueba si el user esta en readable_by'''
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+    
+        sql_data = (id,)
+        sql_sentence = ("SELECT readable_by FROM directories WHERE uuid=?")
+        
+        cur.execute(sql_sentence, sql_data)
+        readable_by_tup = cur.fetchone()[0] #los metodos que nos quedan estan chupaos (menos los de files) #meduele el culo
+        readable_by = json.loads(readable_by_tup)
+        
+        self.bd_con.close()
+        
+        return readable_by
+    
+
     def create_dir(self, uuid_parent, name, user):
         '''Crea un nuevo directorio incluyendolo en la BD'''
         
@@ -208,32 +243,32 @@ class Dir_BD:
         self.bd_con.close()
         
         
-    def add_user_readable(self, id,user,owner):
+    def add_user_readable(self, id, user, owner):
         
         '''Retorna si un elemento dado esta o no en la lista'''
+        has_permission = self._checkUser_Writeable(id, owner)
+        if not has_permission:
+            #throw_exception
+            pass
 
-        if self._checkUser_Writeable(id,owner):
-            self.bd_con = sqlite3.connect(BD_PATH)
-            cur = self.bd_con.cursor()
-            readers=list()
-            readers.append(user)
-            readers_str=json.loads(readers)
-
-            sql_data=(id,readers_str)
-            sql_sentence=("INSERT INTO directories(readable_by) WHERE uuid=? VALUES(?)")
-
-            cur.execute(sql_sentence,sql_data)
-
-            self.bd_con.commit()
-            self.bd_con.close()
-
-
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+        readers=self._obtain_readableBy(id)  
+        readers.append(user)
+        readers_str=json.dumps(readers)
         
-        
+        sql_data=(readers_str, id,)
+        sql_sentence=("UPDATE directories SET readable_by=? WHERE uuid=?")
+
+        cur.execute(sql_sentence,sql_data)
+
+        self.bd_con.commit()
+        self.bd_con.close()
+                
 
     def remove_user_readable(self, element, all_occurrences=False):
         '''Elimina un elemento de la lista. Puede eliminar todas sus apariciones'''
-        
+        ## igual que add_user_readable pero en vez de append, remove
 
     def add_user_writeable(self, element):
         '''Cuenta el numero de veces que aparece un elemento en la lista'''
