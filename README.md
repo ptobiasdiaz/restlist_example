@@ -28,3 +28,8 @@ Y en otro el cliente (que ejecuta código de prueba):
 ```shell
 python3 -m restlist_scripts.client
 ```
+También se puede ejecutar añadiendo el directorio ".venv/bin" al PATH del sistema y ejecutando:
+```shell
+restlist_server
+restlist_client
+```
