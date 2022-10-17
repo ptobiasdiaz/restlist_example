@@ -28,3 +28,7 @@ Y en otro el cliente (que ejecuta código de prueba):
 ```shell
 python3 -m restlist_scripts.client
 ```
+Añadiremos el siguiente directorio al PATH:
+```shell
+export PATH=$(cwd)/.venv/bin:$PATH
+```
