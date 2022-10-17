@@ -28,7 +28,9 @@ Y en otro el cliente (que ejecuta código de prueba):
 ```shell
 python3 -m restlist_scripts.client
 ```
-Añadiremos el siguiente directorio al PATH:
+También se puede ejecutar añadiendo el directorio ".venv/bin" al PATH del sistema y ejecutando:
 ```shell
 export PATH=$(cwd)/.venv/bin:$PATH
+restlist_server
+restlist_client
 ```
