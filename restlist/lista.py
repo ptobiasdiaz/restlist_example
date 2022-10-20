@@ -8,6 +8,7 @@ import sqlite3
 import uuid
 import json
 import string
+from collections import deque
 
 BD_PATH = "./db/data.db"
 
@@ -29,7 +30,7 @@ class Dir_BD:
             try:
                 self.bd_con = sqlite3.connect(BD_PATH)
                 cur = self.bd_con.cursor()
-                cur.execute("CREATE TABLE IF NOT EXISTS directories(uuid text PRIMARY KEY, uuid_parent text, name text, childs text [], tuple text [], readable_by text [], writeable_by text [])")  
+                cur.execute("CREATE TABLE IF NOT EXISTS directories(uuid text PRIMARY KEY, uuid_parent text, name text, childs text [], tuples text [], readable_by text [], writeable_by text [])")  
                 cur.execute("SELECT * FROM directories")   
                 if not cur.fetchone():
                     self.bd_con.commit()
@@ -104,6 +105,20 @@ class Dir_BD:
 
         return True
 
+    def _obtain_Name_dir(self, id):
+        '''obtener UUID de un dir'''
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+        
+        sql_data = (id,)
+        sql_sentence = ("SELECT name FROM directories WHERE uuid=?")
+        cur.execute(sql_sentence, sql_data)
+        name = cur.fetchone()[0]
+                
+        self.bd_con.close()
+                
+        return str(name)
+
 
     def _obtain_UUID_dir(self, uuid_parent, name):
         '''obtener UUID de un dir'''
@@ -131,6 +146,17 @@ class Dir_BD:
         return childs_tuple
 
 
+    def _obtain_dirFiles(self, uuid):
+        cur = self.bd_con.cursor()
+        sql_data = (str(uuid))
+        sql_sentence = ("SELECT tuples FROM directories WHERE uuid=?")
+        
+        cur.execute(sql_sentence, sql_data)
+
+        files_tuple = cur.fetchone()[0]
+        return files_tuple
+
+
     def _obtain_writeableBy(self, id):
         '''Comprueba si el user esta en writeable_by'''
         self.bd_con = sqlite3.connect(BD_PATH)
@@ -149,6 +175,21 @@ class Dir_BD:
         return writeable_by
 
 
+    def _get_UUID_parent(self, id):
+        '''obtener UUID de un dir'''
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+        
+        sql_data = (id,)
+        sql_sentence = ("SELECT uuid_parent FROM directories WHERE uuid=?")
+        cur.execute(sql_sentence, sql_data)
+        uuid_parent = cur.fetchone()[0]
+                
+        self.bd_con.close()
+                
+        return str(uuid_parent)
+        
+
     def _obtain_readableBy(self, id):
         '''Comprueba si el user esta en readable_by'''
         self.bd_con = sqlite3.connect(BD_PATH)
@@ -158,14 +199,31 @@ class Dir_BD:
         sql_sentence = ("SELECT readable_by FROM directories WHERE uuid=?")
         
         cur.execute(sql_sentence, sql_data)
-        readable_by_tup = cur.fetchone()[0] #los metodos que nos quedan estan chupaos (menos los de files) #meduele el culo
+        readable_by_tup = cur.fetchone()[0] 
         readable_by = json.loads(readable_by_tup)
         
         self.bd_con.close()
         
         return readable_by
     
-
+    
+    def _obtain_dirURL(self, id):
+        '''Obtener la el path de un dir desde root'''
+        dir_name=self._obtain_Name_dir(id)
+        path = "" 
+        listPath = deque()
+        listPath.append(dir_name)
+        while(dir_name != "/"):
+            parent = self._get_UUID_parent(id)
+            dir_name = self._obtain_Name_dir(parent)
+            listPath.append(dir_name)
+        
+        while(listPath.count()!= 0):
+            path += listPath.pop() + "/"
+        
+        return path
+        
+        
     def create_dir(self, uuid_parent, name, user):
         '''Crea un nuevo directorio incluyendolo en la BD'''
         
@@ -243,8 +301,7 @@ class Dir_BD:
         self.bd_con.close()
         
         
-    def add_user_readable(self, id, user, owner):
-        
+    def add_user_readable(self, id, user, owner):  
         '''Retorna si un elemento dado esta o no en la lista'''
         has_permission = self._checkUser_Writeable(id, owner)
         if not has_permission:
@@ -266,24 +323,146 @@ class Dir_BD:
         self.bd_con.close()
                 
 
-    def remove_user_readable(self, element, all_occurrences=False):
-        '''Elimina un elemento de la lista. Puede eliminar todas sus apariciones'''
-        ## igual que add_user_readable pero en vez de append, remove
+    def remove_user_readable(self, id, user, owner):  
+        '''Retorna si un elemento dado esta o no en la lista'''
+        has_permission = self._checkUser_Readable(id, owner)
+        if not has_permission:
+            #throw_exception
+            pass
 
-    def add_user_writeable(self, element):
-        '''Cuenta el numero de veces que aparece un elemento en la lista'''
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+        readers=self._obtain_readableBy(id)  
+        readers.remove(user)
+        readers_str=json.dumps(readers)
         
+        sql_data=(readers_str, id,)
+        sql_sentence=("UPDATE directories SET readable_by=? WHERE uuid=?")
 
-    def remove_user_writeable(self):
-        '''Devuelve la longitud de la lista'''
+        cur.execute(sql_sentence,sql_data)
+
+        self.bd_con.commit()
+        self.bd_con.close()
+
+
+    def add_user_writeable(self,id, user, owner):
+        '''Retorna si un elemento dado esta o no en la lista'''
+        has_permission = self._checkUser_Writeable(id, owner)
+        if not has_permission:
+            #throw_exception
+            pass
+
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+        writers=self._obtain_writeableBy(id)  
+        writers.append(user)
+        writers_str=json.dumps(writers)
         
+        sql_data=(writers_str, id,)
+        sql_sentence=("UPDATE directories SET writable_by=? WHERE uuid=?")
 
-    def add_file(self):
+        cur.execute(sql_sentence,sql_data)
+
+        self.bd_con.commit()
+        self.bd_con.close()
+                
+
+    def remove_user_writeable(self, id, user, owner):
+        '''Retorna si un elemento dado esta o no en la lista'''
+        has_permission = self._checkUser_Writeable(id, owner)
+        if not has_permission:
+            #throw_exception
+            pass
+
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+        writers=self._obtain_writeableBy(id)  
+        writers.remove(user)
+        writers_str=json.dumps(writers)
+        
+        sql_data=(writers_str, id,)
+        sql_sentence=("UPDATE directories SET writeable_by=? WHERE uuid=?")
+
+        cur.execute(sql_sentence,sql_data)
+
+        self.bd_con.commit()
+        self.bd_con.close()
+        
+        
+    
+    def add_file(self, id, user, name, url):
         '''Vacia la lista'''
-        
+        has_permission = self._checkUser_Writeable(id, user)
+        if not has_permission:
+            #throw_exception
+            pass    
 
-    def remove_file(self):
-        pass
+        file_tuple = (name, url)
+        tuples_raw=self._obtain_dirFiles(id)
+        tuples_list = json.loads(tuples_raw)   
+        if file_tuple in tuples_list:
+            #throws_exception
+            pass
+        
+        childs=self._obtain_dirChilds(id)
+        childs_list = json.loads(childs)
+        
+        for child in childs_list:
+            if name == self._obtain_Name_dir(child):
+                #throw_exception
+                pass
+        
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+            
+        tuples_list.append(file_tuple)
+        tuples_str = json.dumps(tuples_list)
+        sql_data = (tuples_str, id,)
+        sql_sentence= ("UPDATE directories SET tuples=? WHERE uuid=?")
+
+        cur.execute(sql_sentence,sql_data)
+    
+        self.bd_con.commit()
+        self.bd_con.close()
+    
+    
+    def remove_file(self, id, user, name, url):
+        '''Vacia la lista'''
+        has_permission = self._checkUser_Writeable(id, user)
+        if not has_permission:
+            #throw_exception
+            pass    
+
+        file_tuple = (name, url)
+        tuples_raw=self._obtain_dirFiles(id)
+        tuples_list = json.loads(tuples_raw)   
+        if file_tuple in tuples_list:
+            #borrar
+            pass
+        else:
+            #throw_exception
+            pass
+        
+        childs=self._obtain_dirChilds(id)
+        childs_list = json.loads(childs)
+        
+        for child in childs_list:
+            if name == self._obtain_Name_dir(child):
+                #borrar
+                pass
+        
+        self.bd_con = sqlite3.connect(BD_PATH)
+        cur = self.bd_con.cursor()
+            
+        tuples_list.append(file_tuple)
+        tuples_str = json.dumps(tuples_list)
+        sql_data = (tuples_str, id,)
+        sql_sentence= ("UPDATE directories SET tuples=? WHERE uuid=?")
+
+        cur.execute(sql_sentence,sql_data)
+    
+        self.bd_con.commit()
+        self.bd_con.close()
 
 
 if __name__=="__main__":
