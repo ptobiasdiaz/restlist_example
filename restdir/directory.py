@@ -26,27 +26,24 @@ class Directory:
     '''Implementa todas las operaciones sobre un objeto tipo Dir()'''
 
     def __init__(self):
-        if os.path.exists(BD_PATH):
-            try:
-                self.bd_con = sqlite3.connect(BD_PATH)
-                cur = self.bd_con.cursor()
-                cur.execute("CREATE TABLE IF NOT EXISTS directories(uuid text PRIMARY KEY, uuid_parent text, name text, childs text [], tuples text [], readable_by text [], writeable_by text [])")  
-                cur.execute("SELECT * FROM directories")   
-                if not cur.fetchone():
-                    self.bd_con.commit()
-                    self.bd_con.close()
-                    self.init_root()
-            except Exception as Error:
-                print(Error)
-        else:
-            print("No existe un fichero llamado "+BD_PATH)
+        try:
+            self.bd_con = sqlite3.connect(BD_PATH)
+            cur = self.bd_con.cursor()
+            cur.execute("CREATE TABLE IF NOT EXISTS directories(uuid text PRIMARY KEY, uuid_parent text, name text, childs text [], tuples text [], readable_by text [], writeable_by text [])")  
+            cur.execute("SELECT * FROM directories")   
+            if not cur.fetchone():
+                self.bd_con.commit()
+                self.bd_con.close()
+                self.init_root()
+        except Exception as Error:
+            print(Error)
         
         
     def init_root(self): 
         self.bd_con = sqlite3.connect(BD_PATH)
         cur = self.bd_con.cursor()
    
-        id=uuid.uuid1()
+        id=1
         uuid_parent=0
         name="/"
         readable_by = list()
@@ -142,14 +139,19 @@ class Directory:
         sql_data = (uuid_parent, name)
         sql_sentence = ("SELECT uuid FROM directories WHERE uuid_parent=? AND name=?")
         cur.execute(sql_sentence, sql_data)
-        uuid_dir = cur.fetchone()[0]
-                
+
+        uid = cur.fetchone()
+        if uid == None:
+            return False
+        
+        uuid_dir = uid[0]
         self.bd_con.close()
                 
         return str(uuid_dir)
 
 
     def _get_dirChilds(self, uuid):
+        self.bd_con = sqlite3.connect(BD_PATH)
         cur = self.bd_con.cursor()
         sql_data = (str(uuid))
         sql_sentence = ("SELECT childs FROM directories WHERE uuid=?")
@@ -157,6 +159,9 @@ class Directory:
         cur.execute(sql_sentence, sql_data)
 
         childs_tuple = cur.fetchone()[0]
+        if childs_tuple==None:
+            return "[]"
+            
         return childs_tuple
 
 
@@ -168,6 +173,8 @@ class Directory:
         cur.execute(sql_sentence, sql_data)
 
         files_tuple = cur.fetchone()[0]
+        if files_tuple==None:
+            return "[]"
         return files_tuple
 
 
@@ -250,6 +257,9 @@ class Directory:
             pass
 
         '''Añade nuevo child al parent'''
+
+        id=uuid.uuid1()
+
         childs = self._get_dirChilds(uuid_parent)
         new_child = str(id)
         childs_list = json.loads(childs) 
@@ -266,10 +276,10 @@ class Directory:
         sql_data3 =(childs_str, uuid_parent)
         sql_sentence3  = ("UPDATE directories SET childs=? WHERE uuid=?")
         
+        '''Añade el directorio a la BD'''
         cur.execute(sql_sentence3, sql_data3)
         self.bd_con.commit()
         
-        id=uuid.uuid1()
         readable_by = list()
         writeable_by = list()
         readable_by.append(user)
@@ -292,16 +302,18 @@ class Directory:
         if not self._checkDirectory(uuid_parent):
             raise DirectoyException(f"Directory {uuid_parent} doesn't exist")
         
+        id_dir = self._get_UUID_dir(uuid_parent, name)
+        
         childs = self._get_dirChilds(uuid_parent)   
         childs_list = json.loads(childs)
+        if id_dir not in childs_list:
+            raise DirectoyException(f"It doesn't exist a directory with the name {name}")
+
         for child in childs_list:
             if id_dir == child:
                 childs_list.remove(id_dir)
                 childs_str = json.dumps(childs_list)
-            else:
-                raise DirectoyException(f"It does exist a directory with the name {name}")
 
-        id_dir = self._get_UUID_dir(uuid_parent, name)
         has_permission = self._checkUser_Writeable(id_dir, user)
         if not has_permission:
                 raise DirectoyException(f"User {user} doesn't have writing permissions")

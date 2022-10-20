@@ -1,0 +1,5 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="bandit" tests="1"><testcase classname="restlist_scripts/server.py" name="flask_debug_true"><error more_info="https://bandit.readthedocs.io/en/1.7.4/plugins/b201_flask_debug_true.html" type="HIGH" message="A Flask app appears to be run with debug=True, which exposes the Werkzeug debugger and allows the execution of arbitrary code.">Test ID: B201 Severity: HIGH Confidence: MEDIUM
+CWE: CWE-94 (https://cwe.mitre.org/data/definitions/94.html)
+A Flask app appears to be run with debug=True, which exposes the Werkzeug debugger and allows the execution of arbitrary code.
+Location restlist_scripts/server.py:82</error></testcase></testsuite>
