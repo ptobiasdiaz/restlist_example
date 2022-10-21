@@ -3,7 +3,6 @@
 '''
     Implementacion del servicio de directorios DIRESTORY
 '''
-from csv import writer
 import os
 import sqlite3
 import uuid
@@ -31,7 +30,7 @@ class Directory:
             cur = self.bd_con.cursor()
             cur.execute("CREATE TABLE IF NOT EXISTS directories(uuid text PRIMARY KEY, uuid_parent text, name text, childs text [], tuples text [], readable_by text [], writeable_by text [])")  
             cur.execute("SELECT * FROM directories")   
-            if not cur.fetchone():
+            if not cur.fetchall():
                 self.bd_con.commit()
                 self.bd_con.close()
                 self.init_root()
@@ -48,14 +47,18 @@ class Directory:
         name="/"
         readable_by = list()
         writeable_by =list()
+        files=list()
+        childs=list()
         readable_by.append(ADMIN)
         writeable_by.append(ADMIN)
         
         readable_by_str=json.dumps(readable_by)
         writeable_by_str=json.dumps(writeable_by)
+        childs_str=json.dumps(childs)
+        files_str=json.dumps(files)
         
-        sql_data=(str(id), uuid_parent, name, readable_by_str, writeable_by_str)
-        sql_sentence=("INSERT INTO directories(uuid, uuid_parent, name, readable_by, writeable_by) VALUES(?,?,?,?,?)")
+        sql_data=(str(id), uuid_parent, name, childs_str, files_str, readable_by_str, writeable_by_str)
+        sql_sentence=("INSERT INTO directories(uuid, uuid_parent, name, childs, tuples, readable_by, writeable_by) VALUES(?,?,?,?,?,?,?)")
         cur.execute(sql_sentence, sql_data)
        
         self.bd_con.commit()
@@ -159,22 +162,25 @@ class Directory:
         cur.execute(sql_sentence, sql_data)
 
         childs_tuple = cur.fetchone()[0]
-        if childs_tuple==None:
-            return "[]"
-            
+        
+        self.bd_con.close()
+        
         return childs_tuple
 
 
     def _get_dirFiles(self, uuid):
+        self.bd_con = sqlite3.connect(BD_PATH)
         cur = self.bd_con.cursor()
+        
         sql_data = (str(uuid))
         sql_sentence = ("SELECT tuples FROM directories WHERE uuid=?")
         
         cur.execute(sql_sentence, sql_data)
 
         files_tuple = cur.fetchone()[0]
-        if files_tuple==None:
-            return "[]"
+        
+        self.bd_con.close()
+        
         return files_tuple
 
 
@@ -397,7 +403,7 @@ class Directory:
             raise DirectoyException(f'{owner} has not permissions to add user writeable')
 
         if not self._checkDirectory(id):
-            raise DirectoyException(f'Error while adding user writable, directory {id} does not exist')
+            raise DirectoyException(f'Error while adding user writeable, directory {id} does not exist')
         
         writers=self._get_writeableBy(id)  
         writers.append(user)
@@ -406,7 +412,7 @@ class Directory:
         self.bd_con = sqlite3.connect(BD_PATH)
         cur = self.bd_con.cursor()
         sql_data=(writers_str, id,)
-        sql_sentence=("UPDATE directories SET writable_by=? WHERE uuid=?")
+        sql_sentence=("UPDATE directories SET writeable_by=? WHERE uuid=?")
 
         cur.execute(sql_sentence,sql_data)
 
@@ -421,14 +427,14 @@ class Directory:
             raise DirectoyException(f'{owner} has not permissions to remove user writeable')
 
         if not self._checkDirectory(id):
-            raise DirectoyException(f'Error while removing user writable, directory {id} does not exist')
+            raise DirectoyException(f'Error while removing user writeable, directory {id} does not exist')
 
         writers=self._get_writeableBy(id)
         if user not in writers:
-            raise DirectoyException(f'Error while removing user writable, user {user} not in writable_by list')
+            raise DirectoyException(f'Error while removing user writeable, user {user} not in writeable_by list')
 
         elif user==ADMIN:
-            raise DirectoyException(f'Error while removing user writable, ADMIN user is UNALTERABLE')
+            raise DirectoyException(f'Error while removing user writeable, ADMIN user is UNALTERABLE')
         
         self.bd_con = sqlite3.connect(BD_PATH)
         cur = self.bd_con.cursor()
@@ -453,14 +459,15 @@ class Directory:
         if not has_permission:
             raise DirectoyException(f"{user} doens't have permissions writing permissions")    
 
-        file_tuple = (name, url)
         tuples_raw=self._get_dirFiles(id)
-        tuples_list = json.loads(tuples_raw)   
+        tuples_list = json.loads(tuples_raw)
+        print(tuples_list)
         for file_tuple in tuples_list:
             if name == file_tuple[0]:
                 raise DirectoyException(f"A file with the name {name} already exists")
 
-        updated_tuples = tuples_list.append(file_tuple)
+        tuples_list.append(tuple((name, url)))
+        print(tuples_list)
         
         childs=self._get_dirChilds(id)
         childs_list = json.loads(childs) 
@@ -471,8 +478,9 @@ class Directory:
         self.bd_con = sqlite3.connect(BD_PATH)
         cur = self.bd_con.cursor()
             
-        tuples_str = json.dumps(updated_tuples)
+        tuples_str = json.dumps(tuples_list)
         sql_data = (tuples_str, id,)
+        
         sql_sentence= ("UPDATE directories SET tuples=? WHERE uuid=?")
 
         cur.execute(sql_sentence,sql_data)
@@ -492,16 +500,18 @@ class Directory:
 
         tuples_raw=self._get_dirFiles(id)
         tuples_list = json.loads(tuples_raw)  
-        if (name, url) not in tuples_list:
-            raise DirectoyException(f"A file with the name {name} doesn't exists") 
+        print(tuples_list)
+        for x in tuples_list:
+            if tuple((name, url)) != tuple(x): 
+                raise DirectoyException(f"A file with the name {name} doesn't exists") 
         for file_tuple in tuples_list:
             if name == file_tuple[0]:
-                updated_tuples = tuples_list.remove(file_tuple) 
+                tuples_list.remove(file_tuple) 
         
         self.bd_con = sqlite3.connect(BD_PATH)
         cur = self.bd_con.cursor()
             
-        tuples_str = json.dumps(updated_tuples)
+        tuples_str = json.dumps(tuples_list)
         sql_data = (tuples_str, id,)
         sql_sentence= ("UPDATE directories SET tuples=? WHERE uuid=?")
 
@@ -514,5 +524,5 @@ class Directory:
 if __name__=="__main__":
     dirDB=Directory()
     
-    dirDB.new_dir(1, "prueba", "admin")
+   # dirDB.new_dir(1, "prueba", "admin")
     #dirDB.remove_dir(1, "prueba", "admin")
